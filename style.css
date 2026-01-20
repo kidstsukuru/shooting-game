@@ -1,0 +1,196 @@
+/* Orbitronフォントをインポート */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+body {
+    margin: 0;
+    overflow: hidden;
+    /* スクロールバーを非表示にする */
+    font-family: 'Orbitron', sans-serif;
+    background-color: #050510;
+    /* 深い宇宙の色 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    color: #e2e8f0;
+}
+
+#game-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #000;
+    overflow: hidden;
+    touch-action: none;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+#game-ui {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 10;
+}
+
+#game-ui.hidden {
+    display: none;
+}
+
+.game-message {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #00ffff;
+    /* シアン */
+    margin-bottom: 30px;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.8), 0 0 20px rgba(0, 255, 255, 0.4);
+    text-align: center;
+    letter-spacing: 2px;
+}
+
+.game-score {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    font-size: 1.5rem;
+    color: #fff;
+    z-index: 5;
+    text-shadow: 0 0 5px #00ffff;
+}
+
+.game-hp {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    font-size: 1.5rem;
+    color: #ff0055;
+    z-index: 5;
+    text-shadow: 0 0 5px #ff0055;
+}
+
+#bossHpDisplay {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 24px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border: 2px solid #a020f0;
+    border-radius: 12px;
+    overflow: hidden;
+    z-index: 5;
+    display: none;
+    box-shadow: 0 0 10px rgba(160, 32, 240, 0.5);
+}
+
+#bossHpBar {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #a020f0, #d53f8c);
+    transition: width 0.1s linear;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(213, 63, 140, 0.8);
+}
+
+.game-button {
+    padding: 15px 50px;
+    font-size: 1.5rem;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: bold;
+    color: #000;
+    background: linear-gradient(45deg, #00ffff, #0088ff);
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.6);
+    min-width: 200px;
+    text-align: center;
+    margin: 15px 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.game-button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(0, 255, 255, 0.9);
+    background: linear-gradient(45deg, #fff, #00ffff);
+}
+
+.game-button:active {
+    transform: scale(0.95);
+}
+
+/* モバイルデバイス向けの調整 */
+@media (max-width: 768px) {
+    .game-message {
+        font-size: 2rem;
+        padding: 0 20px;
+    }
+
+    .game-score,
+    .game-hp {
+        font-size: 1.2rem;
+        top: 10px;
+    }
+
+    #bossHpDisplay {
+        width: 90%;
+        top: 60px;
+    }
+
+    .game-button {
+        padding: 20px 40px;
+        font-size: 1.2rem;
+    }
+}
+
+#fog-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, transparent 40%, rgba(128, 0, 128, 0.4) 90%);
+    pointer-events: none;
+    z-index: 5;
+    animation: pulseFog 4s infinite alternate;
+}
+
+@keyframes pulseFog {
+    0% {
+        opacity: 0.5;
+    }
+
+    100% {
+        opacity: 0.8;
+    }
+}
+
+#boss-timer {
+    position: absolute;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 32px;
+    color: #ff0055;
+    font-weight: bold;
+    text-shadow: 0 0 10px #ff0000;
+    z-index: 20;
+    font-family: 'Orbitron', sans-serif;
+}

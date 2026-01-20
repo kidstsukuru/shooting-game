@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>宇宙船シューティングゲーム (縦型・高速・16:10)</title>
+    <!-- Tailwind CSSをCDNで読み込み -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 外部CSSファイルを読み込み -->
+    <link rel="stylesheet" href="style.css">
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="images/icon-512.png">
+</head>
+
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="fog-overlay" class="hidden"></div>
+        <div id="boss-timer" class="hidden">DEATH IN: 30</div>
+        <div id="game-ui" class="hidden">
+            <div id="game-message" class="game-message"></div>
+            <button id="startButton" class="game-button">ゲーム開始</button>
+            <button id="restartButton" class="game-button hidden">再挑戦</button>
+        </div>
+        <div id="scoreDisplay" class="game-score">スコア: 0</div>
+        <div id="hpDisplay" class="game-hp">HP: 3</div>
+        <div id="bossHpDisplay">
+            <div id="bossHpBar"></div>
+        </div>
+    </div>
+
+    <!-- 外部JavaScriptファイルを読み込み -->
+    <script src="script.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+                .then(() => console.log('Service Worker Registered'))
+                .catch((error) => console.log('Service Worker Registration Failed:', error));
+        }
+    </script>
+</body>
+
+</html>
