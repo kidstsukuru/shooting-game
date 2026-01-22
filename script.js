@@ -1,16 +1,70 @@
 // ゲームキャンバスとコンテキストの取得
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+let canvas;
+let ctx;
 
 // UI要素の取得
-const gameUI = document.getElementById('game-ui');
-const gameMessage = document.getElementById('game-message');
-const startButton = document.getElementById('startButton');
-const restartButton = document.getElementById('restartButton');
-const scoreDisplay = document.getElementById('scoreDisplay');
-const hpDisplay = document.getElementById('hpDisplay'); // HP表示要素
-const bossHpDisplay = document.getElementById('bossHpDisplay'); // ボスHPコンテナ
-const bossHpBar = document.getElementById('bossHpBar'); // ボスHPバー
+let gameUI;
+let gameMessage;
+let startButton;
+let restartButton;
+let scoreDisplay;
+let hpDisplay;
+let bossHpDisplay;
+let bossHpBar;
+let levelDisplay;
+let expBar;
+let levelUpDisplay;
+let levelUpReward;
+
+// DOM要素を初期化する関数
+function initDOMElements() {
+    canvas = document.getElementById('gameCanvas');
+    ctx = canvas.getContext('2d');
+    gameUI = document.getElementById('game-ui');
+    gameMessage = document.getElementById('game-message');
+    startButton = document.getElementById('startButton');
+    restartButton = document.getElementById('restartButton');
+    scoreDisplay = document.getElementById('scoreDisplay');
+    hpDisplay = document.getElementById('hpDisplay');
+    bossHpDisplay = document.getElementById('bossHpDisplay');
+    bossHpBar = document.getElementById('bossHpBar');
+    levelDisplay = document.getElementById('levelDisplay');
+    expBar = document.getElementById('expBar');
+    levelUpDisplay = document.getElementById('levelUpDisplay');
+    levelUpReward = document.getElementById('levelUpReward');
+
+    // デバッグ: 要素が見つかったか確認
+    console.log('levelDisplay:', levelDisplay);
+    console.log('expBar:', expBar);
+
+    // 要素が見つからない場合は動的に作成
+    if (!levelDisplay) {
+        console.warn('levelDisplay not found, creating dynamically');
+        levelDisplay = document.createElement('div');
+        levelDisplay.id = 'levelDisplay';
+        levelDisplay.className = 'game-level';
+        levelDisplay.textContent = 'Lv.1';
+        document.getElementById('game-container').appendChild(levelDisplay);
+    }
+    if (!expBar) {
+        console.warn('expBar not found, creating dynamically');
+        const container = document.createElement('div');
+        container.id = 'expBarContainer';
+        expBar = document.createElement('div');
+        expBar.id = 'expBar';
+        container.appendChild(expBar);
+        document.getElementById('game-container').appendChild(container);
+    }
+    if (!levelUpDisplay) {
+        console.warn('levelUpDisplay not found, creating dynamically');
+        levelUpDisplay = document.createElement('div');
+        levelUpDisplay.id = 'levelUpDisplay';
+        levelUpDisplay.className = 'hidden';
+        levelUpDisplay.innerHTML = '<div class="level-up-text">LEVEL UP!</div><div id="levelUpReward" class="level-up-reward"></div>';
+        document.getElementById('game-container').appendChild(levelUpDisplay);
+        levelUpReward = document.getElementById('levelUpReward');
+    }
+}
 
 // ゲームの状態変数
 let gameRunning = false;
@@ -29,6 +83,14 @@ let keys = {}; // 押されているキーを追跡
 let currentGameState = 'start'; // 'start', 'playing_waves', 'boss_approaching', 'boss_battle', 'game_over', 'victory'
 let isPlayerDead = false; // プレイヤーが破壊されたかどうか
 
+// レベルシステム変数
+let playerLevel = 1;
+let playerExp = 0;
+let expToNextLevel = 50; // 次のレベルに必要な経験値
+let bulletCount = 1; // 同時発射する弾の数
+let weaponType = 'normal'; // 'normal', 'spread', 'laser', 'homing'
+let bossesDefeated = 0; // 倒したボスの数
+
 // タッチ制御用の変数
 let touchStartX = 0;
 let isTouching = false;
@@ -39,12 +101,12 @@ const BULLET_SPEED = 15; // 弾速アップ
 const ENEMY_SPEED = 3; // モバイル用に少し遅く
 const ENEMY_SPAWN_INTERVAL = 1000; // 敵の出現間隔 (ミリ秒)
 const SMALL_ENEMY_SPAWN_INTERVAL = 3000; // 小型敵の出現間隔 (ミリ秒)
-let BULLET_FIRE_INTERVAL = 80; // 連射速度アップ (200 -> 80)
+let BULLET_FIRE_INTERVAL = 150; // 連射速度（レベルアップで改善）
 const MAX_ENEMIES = 8; // 画面上の最大敵数
 
 // ボス戦デバフ設定
 const NORMAL_PLAYER_SPEED = 10;
-const NORMAL_FIRE_INTERVAL = 80;
+const NORMAL_FIRE_INTERVAL = 150;
 const DEBUFF_PLAYER_SPEED = 3; // 移動速度低下
 const DEBUFF_FIRE_INTERVAL = 300; // 連射速度低下
 const DEATH_TIMER_SECONDS = 30; // 30秒後に爆死
@@ -54,11 +116,11 @@ let deathTimerInterval;
 const MAX_SMALL_ENEMIES = 3; // 画面上の最大小型敵数
 const INITIAL_PLAYER_HP = 3; // 初期HP
 
-const BOSS_TRIGGER_SCORE = 500; // ボスが出現するスコア
-const BOSS_INITIAL_HP = 500; // ボスの初期HP (100 -> 500)
-const BOSS_SPEED = 4; // ボスの移動速度 (2 -> 4)
-const BOSS_BULLET_SPEED = 8; // ボスの弾丸速度 (7 -> 8)
-const BOSS_BULLET_FIRE_INTERVAL = 400; // ボスの発射間隔 (350 -> 400, 3-wayになるため調整)
+const BOSS_TRIGGER_LEVEL = 10; // レベル10ごとにボス出現
+const BOSS_INITIAL_HP = 500; // ボスの初期HP
+const BOSS_SPEED = 4; // ボスの移動速度
+const BOSS_BULLET_SPEED = 8; // ボスの弾丸速度
+const BOSS_BULLET_FIRE_INTERVAL = 400; // ボスの発射間隔
 const ENEMY_BULLET_SPEED = 6; // 敵の弾の速度
 const ENEMY_FIRE_CHANCE = 0.005; // 敵が弾を発射する確率
 
@@ -83,32 +145,6 @@ function resizeCanvas() {
     }
 }
 
-// リサイズイベント
-window.addEventListener('resize', resizeCanvas);
-window.addEventListener('orientationchange', resizeCanvas);
-
-// タッチイベント
-canvas.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    const touch = e.touches[0];
-    touchStartX = touch.clientX;
-    touchStartY = touch.clientY; // Y座標も記録
-    isTouching = true;
-    movePlayer(touch.clientX, touch.clientY);
-}, { passive: false });
-
-canvas.addEventListener('touchmove', (e) => {
-    e.preventDefault();
-    if (isTouching) {
-        const touch = e.touches[0];
-        movePlayer(touch.clientX, touch.clientY);
-    }
-}, { passive: false });
-
-canvas.addEventListener('touchend', () => {
-    isTouching = false;
-}, { passive: false });
-
 function movePlayer(touchX, touchY) {
     if (player) {
         player.x = touchX - player.width / 2;
@@ -122,23 +158,53 @@ function movePlayer(touchX, touchY) {
 
 // ダブルタップで画面全体表示をトグル
 let lastTap = 0;
-document.addEventListener('touchend', (e) => {
-    const currentTime = new Date().getTime();
-    const tapLength = currentTime - lastTap;
-    if (tapLength < 300 && tapLength > 0) {
-        // ダブルタップ検出
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => {
-                console.error('フルスクリーンエラー:', err);
-            });
-        } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
+
+// イベントリスナーを初期化する関数
+function initEventListeners() {
+    // リサイズイベント
+    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('orientationchange', resizeCanvas);
+
+    // タッチイベント
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        isTouching = true;
+        movePlayer(touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (isTouching) {
+            const touch = e.touches[0];
+            movePlayer(touch.clientX, touch.clientY);
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', () => {
+        isTouching = false;
+    }, { passive: false });
+
+    // ダブルタップで画面全体表示をトグル
+    document.addEventListener('touchend', (e) => {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTap;
+        if (tapLength < 300 && tapLength > 0) {
+            // ダブルタップ検出
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.error('フルスクリーンエラー:', err);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
             }
         }
-    }
-    lastTap = currentTime;
-});
+        lastTap = currentTime;
+    });
+}
 
 // 背景の星クラス
 class Star {
@@ -303,6 +369,67 @@ class Bullet {
     }
 }
 
+// スプレッドショット弾（角度付き）
+class SpreadBullet {
+    constructor(x, y, angle) {
+        this.width = 4;
+        this.height = 20;
+        this.x = x - this.width / 2;
+        this.y = y;
+        this.color = '#ff00ff';
+        this.angle = angle;
+        this.vx = Math.sin(angle) * BULLET_SPEED;
+        this.vy = -Math.cos(angle) * BULLET_SPEED;
+    }
+
+    draw() {
+        ctx.save();
+        ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+        ctx.rotate(this.angle);
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+        ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+        ctx.restore();
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+    }
+}
+
+// レーザー弾（太くて強力）
+class LaserBullet {
+    constructor(x, y, power) {
+        this.width = 8 + power * 3; // 弾数が多いほど太くなる
+        this.height = 40;
+        this.x = x - this.width / 2;
+        this.y = y;
+        this.color = '#00ff00';
+        this.power = power; // ダメージ倍率
+    }
+
+    draw() {
+        ctx.save();
+        // グラデーション効果
+        const gradient = ctx.createLinearGradient(this.x, this.y, this.x + this.width, this.y);
+        gradient.addColorStop(0, '#00ff00');
+        gradient.addColorStop(0.5, '#88ff88');
+        gradient.addColorStop(1, '#00ff00');
+        ctx.fillStyle = gradient;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#00ff00';
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.restore();
+    }
+
+    update() {
+        this.y -= BULLET_SPEED * 1.2; // レーザーは少し速い
+    }
+}
+
+
 // 敵の弾丸クラス
 class EnemyBullet {
     constructor(x, y, targetX, targetY) {
@@ -334,7 +461,6 @@ class EnemyBullet {
     update() {
         this.x += this.vx;
         this.y += this.vy;
-        this.draw();
     }
 }
 
@@ -400,8 +526,6 @@ class Enemy {
                 player.y + player.height / 2
             ));
         }
-
-        this.draw();
     }
 }
 
@@ -469,8 +593,6 @@ class SmallEnemy {
             ));
             this.fireCooldown = 60;
         }
-
-        this.draw();
     }
 }
 
@@ -500,8 +622,9 @@ class Boss {
     draw() {
         if (this.imageLoaded) {
             ctx.save();
+            // 中心を基準に180度回転
             ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
-            ctx.rotate(Math.PI); // 180度回転
+            ctx.rotate(Math.PI);
 
             // グロー効果
             ctx.shadowBlur = 20;
@@ -570,10 +693,7 @@ function startBossBattleMode() {
     // 霧エフェクト
     document.getElementById('fog-overlay').classList.remove('hidden');
 
-    // デバフ適用
-    PLAYER_SPEED = DEBUFF_PLAYER_SPEED;
-    BULLET_FIRE_INTERVAL = DEBUFF_FIRE_INTERVAL;
-    startBulletFire(); // 発射間隔更新のために再起動
+    // デバフは適用しない（移動速度・攻撃速度は通常のまま）
 
     // タイマー開始
     deathTimer = DEATH_TIMER_SECONDS;
@@ -655,16 +775,25 @@ function initGame() {
     boss = null; // ボスをリセット
     bossBullets = []; // ボスの弾丸をリセット
     enemyBullets = []; // 敵の弾丸をリセット
-    enemyBullets = []; // 敵の弾丸をリセット
     particles = []; // パーティクルリセット
     isPlayerDead = false;
+
+    // レベルシステムの初期化
+    playerLevel = 1;
+    playerExp = 0;
+    expToNextLevel = 50;
+    bulletCount = 1;
+    weaponType = 'normal';
+    bossesDefeated = 0;
+    BULLET_FIRE_INTERVAL = NORMAL_FIRE_INTERVAL;
+    updateLevelDisplay();
 
     // ボス戦エフェクトのリセット
     document.getElementById('fog-overlay').classList.add('hidden');
     document.getElementById('boss-timer').classList.add('hidden');
+    levelUpDisplay.classList.add('hidden');
     if (deathTimerInterval) clearInterval(deathTimerInterval);
     PLAYER_SPEED = NORMAL_PLAYER_SPEED;
-    BULLET_FIRE_INTERVAL = NORMAL_FIRE_INTERVAL;
 
     // 星の初期化
     stars = [];
@@ -681,6 +810,112 @@ function initGame() {
     currentGameState = 'playing_waves'; // 初期状態は通常ウェーブ
     startEnemySpawn();
     startBulletFire();
+}
+
+// レベル表示を更新
+function updateLevelDisplay() {
+    levelDisplay.textContent = `Lv.${playerLevel}`;
+    const expPercent = (playerExp / expToNextLevel) * 100;
+    expBar.style.width = `${expPercent}%`;
+}
+
+// 経験値を獲得
+function gainExp(amount) {
+    playerExp += amount;
+
+    // レベルアップチェック
+    while (playerExp >= expToNextLevel) {
+        playerExp -= expToNextLevel;
+        levelUp();
+    }
+
+    updateLevelDisplay();
+}
+
+// レベルアップ処理
+function levelUp() {
+    playerLevel++;
+    expToNextLevel = Math.floor(50 * Math.pow(1.2, playerLevel - 1)); // レベルが上がるごとに必要経験値が増加
+
+    // レベルアップ報酬を決定
+    let reward = getlevelUpReward();
+
+    // レベルアップ演出
+    showLevelUpEffect(reward.message);
+
+    // ボス出現チェック（レベル10ごと）
+    if (playerLevel % BOSS_TRIGGER_LEVEL === 0 && !boss && currentGameState === 'playing_waves') {
+        setTimeout(() => {
+            triggerBoss();
+        }, 2000);
+    }
+
+    // 弾発射の更新（連射速度が変わった場合）
+    startBulletFire();
+}
+
+// レベルアップ報酬を取得
+function getlevelUpReward() {
+    let message = '';
+
+    // レベルに応じた報酬
+    if (playerLevel % 5 === 0) {
+        // 5レベルごとに弾数増加
+        bulletCount = Math.min(bulletCount + 1, 7); // 最大7発
+        message = `弾数 +1 (${bulletCount}発)`;
+    } else if (playerLevel % 3 === 0) {
+        // 3レベルごとに連射速度アップ
+        BULLET_FIRE_INTERVAL = Math.max(BULLET_FIRE_INTERVAL - 10, 50); // 最小50ms
+        message = `連射速度 UP!`;
+    } else if (playerLevel === 15) {
+        weaponType = 'spread';
+        message = `新武器: スプレッドショット!`;
+    } else if (playerLevel === 25) {
+        weaponType = 'laser';
+        message = `新武器: レーザー!`;
+    } else {
+        // その他のレベルではHP回復
+        playerHP = Math.min(playerHP + 1, 10);
+        hpDisplay.textContent = `HP: ${playerHP}`;
+        message = `HP +1`;
+    }
+
+    return { message };
+}
+
+// レベルアップ演出を表示
+function showLevelUpEffect(rewardMessage) {
+    levelUpReward.textContent = rewardMessage;
+    levelUpDisplay.classList.remove('hidden');
+
+    // パーティクルエフェクト
+    for (let i = 0; i < 20; i++) {
+        particles.push(new Particle(player.x + player.width / 2, player.y + player.height / 2, '#ffd700'));
+    }
+
+    // 2秒後に非表示
+    setTimeout(() => {
+        levelUpDisplay.classList.add('hidden');
+    }, 2000);
+}
+
+// ボス出現トリガー
+function triggerBoss() {
+    if (boss || currentGameState !== 'playing_waves') return;
+
+    currentGameState = 'boss_approaching';
+    stopEnemySpawn(); // 通常の敵の出現を停止
+    enemies = []; // 画面上の残っている敵をクリア
+    smallEnemies = []; // 画面上の残っている小型の敵をクリア
+
+    // ボスのHPはレベルに応じて増加
+    const bossHp = BOSS_INITIAL_HP + (bossesDefeated * 200);
+    boss = new Boss();
+    boss.hp = bossHp;
+    boss.maxHp = bossHp;
+
+    bossHpDisplay.style.display = 'block'; // ボスHPバーを表示
+    bossHpBar.style.width = '100%';
 }
 
 let enemySpawnTimer;
@@ -706,17 +941,47 @@ function startEnemySpawn() {
 
 function stopEnemySpawn() {
     clearInterval(enemySpawnTimer);
+    clearInterval(smallEnemySpawnTimer);
 }
 
 let bulletFireTimer;
 function startBulletFire() {
     if (bulletFireTimer) clearInterval(bulletFireTimer);
     bulletFireTimer = setInterval(() => {
-        if (gameRunning && player) {
-            // プレイヤーの上端中央から弾丸を発射
-            bullets.push(new Bullet(player.x + player.width / 2, player.y));
+        if (gameRunning && player && !isPlayerDead) {
+            fireBullets();
         }
     }, BULLET_FIRE_INTERVAL);
+}
+
+// 弾を発射する関数（複数弾対応）
+function fireBullets() {
+    const centerX = player.x + player.width / 2;
+    const startY = player.y;
+
+    if (weaponType === 'normal') {
+        // 通常弾：横に並べて発射
+        const spacing = 15;
+        const totalWidth = (bulletCount - 1) * spacing;
+        const startX = centerX - totalWidth / 2;
+
+        for (let i = 0; i < bulletCount; i++) {
+            bullets.push(new Bullet(startX + i * spacing, startY));
+        }
+    } else if (weaponType === 'spread') {
+        // スプレッドショット：扇状に発射
+        const angleSpread = 0.3; // 広がりの角度
+        const totalAngle = angleSpread * (bulletCount - 1);
+        const startAngle = -totalAngle / 2;
+
+        for (let i = 0; i < bulletCount; i++) {
+            const angle = startAngle + i * angleSpread;
+            bullets.push(new SpreadBullet(centerX, startY, angle));
+        }
+    } else if (weaponType === 'laser') {
+        // レーザー：太い一本の弾
+        bullets.push(new LaserBullet(centerX, startY, bulletCount));
+    }
 }
 
 function stopBulletFire() {
@@ -836,7 +1101,9 @@ function gameLoop() {
         bullet.update();
         bullet.draw();
 
-        if (bullet.y + bullet.height < 0) { // 画面上端を越えたら削除
+        // 画面外に出たら削除（すべての弾タイプに対応）
+        if (bullet.y + bullet.height < 0 || bullet.y > canvas.height ||
+            bullet.x + bullet.width < 0 || bullet.x > canvas.width) {
             bullets.splice(i, 1);
             continue;
         }
@@ -851,6 +1118,7 @@ function gameLoop() {
                     enemies.splice(j, 1);
                     score += 10;
                     scoreDisplay.textContent = `スコア: ${score}`;
+                    gainExp(5); // 経験値獲得
                     break;
                 }
             }
@@ -866,6 +1134,7 @@ function gameLoop() {
                     createExplosion(smallEnemy.x + smallEnemy.width / 2, smallEnemy.y + smallEnemy.height / 2, smallEnemy.color);
                     smallEnemies.splice(j, 1);
                     score += 20; // 小型敵は倒すと高得点
+                    gainExp(10); // 経験値獲得
                 }
                 break;
             }
@@ -874,7 +1143,9 @@ function gameLoop() {
         if (currentGameState === 'boss_battle' && boss) {
             if (checkCollision(bullet, boss)) {
                 bullets.splice(i, 1);
-                boss.hp -= 10; // ボスにダメージ
+                // レーザーは追加ダメージ
+                const damage = bullet.power ? 10 * bullet.power : 10;
+                boss.hp -= damage;
                 createExplosion(bullet.x, bullet.y, '#fff'); // ヒットエフェクト
                 bossHpBar.style.width = `${(boss.hp / boss.maxHp) * 100}%`; // HPバーを更新
                 if (boss.hp <= 0) {
@@ -889,7 +1160,25 @@ function gameLoop() {
                             );
                         }, k * 100);
                     }
-                    victoryScreen(); // ボスを倒したらゲームクリア
+
+                    // ボス撃破報酬
+                    gainExp(100); // 大量の経験値
+                    score += 500;
+                    scoreDisplay.textContent = `スコア: ${score}`;
+                    bossesDefeated++;
+
+                    // ボス戦エフェクトをリセット
+                    stopBossBulletFire();
+                    document.getElementById('fog-overlay').classList.add('hidden');
+                    document.getElementById('boss-timer').classList.add('hidden');
+                    if (deathTimerInterval) clearInterval(deathTimerInterval);
+                    bossHpDisplay.style.display = 'none';
+
+                    // 通常のウェーブに戻る
+                    boss = null;
+                    bossBullets = [];
+                    currentGameState = 'playing_waves';
+                    startEnemySpawn();
                     return;
                 }
                 break;
@@ -912,16 +1201,9 @@ function gameLoop() {
                 continue;
             }
 
-            // 画面の下端に到達した敵を削除し、HPを減らす
+            // 画面の下端に到達した敵を削除（ダメージなし）
             if (enemy.y > canvas.height) {
                 enemies.splice(i, 1);
-                if (!isPlayerDead) {
-                    playerHP--;
-                    hpDisplay.textContent = `HP: ${playerHP}`;
-                    if (playerHP <= 0) {
-                        handlePlayerDeath();
-                    }
-                }
             }
         }
 
@@ -948,6 +1230,7 @@ function gameLoop() {
         for (let i = enemyBullets.length - 1; i >= 0; i--) {
             const enemyBullet = enemyBullets[i];
             enemyBullet.update();
+            enemyBullet.draw();
 
             // 敵の弾丸とプレイヤーの衝突判定（ここでのみHPが減る）
             if (!isPlayerDead && checkCollision(player, enemyBullet)) {
@@ -967,15 +1250,8 @@ function gameLoop() {
             }
         }
 
-        // ボス出現条件のチェック
-        if (score >= BOSS_TRIGGER_SCORE && !boss) {
-            currentGameState = 'boss_approaching';
-            stopEnemySpawn(); // 通常の敵の出現を停止
-            enemies = []; // 画面上の残っている敵をクリア
-            smallEnemies = []; // 画面上の残っている小型の敵をクリア
-            boss = new Boss();
-            bossHpDisplay.style.display = 'block'; // ボスHPバーを表示
-        }
+        // ボス出現はレベルベースのみ（スコアベースは削除）
+
 
     } else if (currentGameState === 'boss_approaching' || currentGameState === 'boss_battle') {
         // ボスの更新と描画
@@ -983,15 +1259,10 @@ function gameLoop() {
             boss.update();
             boss.draw();
 
-            // ボスとプレイヤーの衝突判定
+            // ボスとプレイヤーの衝突判定（ダメージなし、ノックバックのみ）
             if (!isPlayerDead && checkCollision(player, boss)) {
-                playerHP--;
-                hpDisplay.textContent = `HP: ${playerHP}`;
                 createExplosion(player.x + player.width / 2, player.y + player.height / 2, '#fff');
-                if (playerHP <= 0) {
-                    handlePlayerDeath();
-                }
-                // ボスとの衝突ではボスは消えない
+                // ボスとの衝突ではダメージなし
             }
         }
 
@@ -1032,17 +1303,6 @@ window.addEventListener('keyup', (e) => {
     keys[e.key] = false;
 });
 
-// ボタンイベントリスナー
-startButton.addEventListener('click', () => {
-    initGame();
-    gameLoop();
-});
-
-restartButton.addEventListener('click', () => {
-    initGame();
-    gameLoop();
-});
-
 let previewPlayer;
 
 // プレビュー用プレイヤー描画
@@ -1076,7 +1336,27 @@ function drawPreviewPlayer() {
 
 // 初期表示
 window.onload = function () {
+    // DOM要素を初期化
+    initDOMElements();
+
+    // イベントリスナーを初期化
+    initEventListeners();
+
+    // リサイズ
     resizeCanvas();
+
+    // ボタンイベントリスナーを設定
+    startButton.addEventListener('click', () => {
+        initGame();
+        gameLoop();
+    });
+
+    restartButton.addEventListener('click', () => {
+        initGame();
+        gameLoop();
+    });
+
+    // 初期表示
     gameMessage.textContent = 'SPACE SHOOTER';
     gameUI.classList.remove('hidden');
     startButton.classList.remove('hidden');

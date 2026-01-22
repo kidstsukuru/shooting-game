@@ -76,10 +76,16 @@ canvas {
     position: absolute;
     top: 20px;
     right: 20px;
-    font-size: 1.5rem;
-    color: #ff0055;
+    font-size: 2rem;
+    font-weight: bold;
+    color: #fff;
     z-index: 5;
-    text-shadow: 0 0 5px #ff0055;
+    background: linear-gradient(135deg, rgba(255, 0, 85, 0.8), rgba(200, 0, 60, 0.9));
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: 2px solid #ff0055;
+    box-shadow: 0 0 15px rgba(255, 0, 85, 0.6), inset 0 0 10px rgba(255, 255, 255, 0.1);
+    text-shadow: 0 0 10px #ff0055, 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 #bossHpDisplay {
@@ -193,4 +199,124 @@ canvas {
     text-shadow: 0 0 10px #ff0000;
     z-index: 20;
     font-family: 'Orbitron', sans-serif;
+}
+
+/* レベル表示 */
+.game-level {
+    position: absolute;
+    top: 55px;
+    left: 20px;
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #ffd700;
+    z-index: 5;
+    text-shadow: 0 0 10px #ffd700, 0 0 20px #ff8c00;
+}
+
+/* 経験値バー */
+#expBarContainer {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    max-width: 400px;
+    height: 12px;
+    background-color: rgba(0, 0, 0, 0.6);
+    border: 2px solid #ffd700;
+    border-radius: 6px;
+    overflow: hidden;
+    z-index: 5;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+#expBar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #ffd700, #ffaa00, #ff8c00);
+    transition: width 0.3s ease;
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+}
+
+/* レベルアップ表示 */
+#levelUpDisplay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    text-align: center;
+    pointer-events: none;
+}
+
+#levelUpDisplay.hidden {
+    display: none;
+}
+
+.level-up-text {
+    font-size: 4rem;
+    font-weight: bold;
+    color: #ffd700;
+    text-shadow: 0 0 20px #ffd700, 0 0 40px #ff8c00, 0 0 60px #ff4500;
+    animation: levelUpPulse 0.5s ease-out;
+    letter-spacing: 4px;
+}
+
+.level-up-reward {
+    font-size: 1.5rem;
+    color: #00ffff;
+    margin-top: 15px;
+    text-shadow: 0 0 10px #00ffff;
+    animation: fadeInUp 0.5s ease-out 0.2s both;
+}
+
+@keyframes levelUpPulse {
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInUp {
+    0% {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* モバイル向けレベル関連の調整 */
+@media (max-width: 768px) {
+    .game-level {
+        top: 45px;
+        font-size: 1rem;
+    }
+
+    #expBarContainer {
+        width: 90%;
+        bottom: 15px;
+        height: 10px;
+    }
+
+    .level-up-text {
+        font-size: 2.5rem;
+    }
+
+    .level-up-reward {
+        font-size: 1.2rem;
+    }
 }

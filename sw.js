@@ -1,4 +1,4 @@
-const CACHE_NAME = 'space-shooter-v1';
+const CACHE_NAME = 'space-shooter-v5';
 const ASSETS = [
     './',
     './index.html',
@@ -17,6 +17,22 @@ self.addEventListener('install', (e) => {
             return cache.addAll(ASSETS);
         })
     );
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', (e) => {
+    e.waitUntil(
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        })
+    );
+    self.clients.claim();
 });
 
 self.addEventListener('fetch', (e) => {
