@@ -1179,7 +1179,6 @@ function gameLoop() {
                     bossBullets = [];
                     currentGameState = 'playing_waves';
                     startEnemySpawn();
-                    return;
                 }
                 break;
             }
