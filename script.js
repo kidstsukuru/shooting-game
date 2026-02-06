@@ -1296,6 +1296,15 @@ function gameLoop() {
 // キーボードイベントリスナー
 window.addEventListener('keydown', (e) => {
     keys[e.key] = true;
+
+    // スペースキーでゲーム開始/リスタート
+    if (e.key === ' ' || e.code === 'Space') {
+        e.preventDefault(); // ページのスクロールを防ぐ
+        if (!gameRunning) {
+            initGame();
+            gameLoop();
+        }
+    }
 });
 
 window.addEventListener('keyup', (e) => {
