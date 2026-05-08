@@ -3,12 +3,12 @@ const ASSETS = [
     './',
     './index.html',
     './style.css',
-    './script.js',
-    './images/player.png',
-    './images/enemy.png',
-    './images/small_enemy.png',
-    './images/boss.png',
-    './images/icon-512.png'
+    './src/main.js',
+    './assets/images/player.png',
+    './assets/images/enemy.png',
+    './assets/images/small_enemy.png',
+    './assets/images/boss.png',
+    './assets/images/icon-512.png'
 ];
 
 self.addEventListener('install', (e) => {

@@ -1,0 +1,389 @@
+import { State } from './State.js';
+import { checkCollision } from '../systems/Collision.js';
+import { updateHUD, updateLevelDisplay, showLevelUpEffect, toggleUIForGameRun, updateBossHPBar, showMessage } from '../ui/HUD.js';
+import { startEnemySpawn, stopEnemySpawn, triggerBoss } from '../systems/Spawner.js';
+import { Bullet, SpreadBullet, LaserBullet, BossBullet } from '../entities/Bullet.js';
+import { Player } from '../entities/Player.js';
+import { Star, Particle } from '../entities/Effects.js';
+import { BOSS_BULLET_FIRE_INTERVAL, DEATH_TIMER_SECONDS, BOSS_TRIGGER_LEVEL } from '../utils/constants.js';
+import { keys } from './Input.js';
+
+let canvas;
+let ctx;
+
+export function initGameLoop(gameCanvas, gameCtx) {
+    canvas = gameCanvas;
+    ctx = gameCtx;
+}
+
+export function startGame(skinId = 'striker') {
+    State.reset();
+    State.selectedShipId = skinId;
+    
+    State.player = new Player(canvas.width, canvas.height, skinId);
+    
+    for (let i = 0; i < 100; i++) {
+        State.stars.push(new Star(canvas.width, canvas.height));
+    }
+
+    State.gameRunning = true;
+    toggleUIForGameRun(true);
+    updateHUD();
+    updateLevelDisplay();
+    
+    startEnemySpawn(canvas.width);
+    startBulletFire();
+    
+    requestAnimationFrame(gameLoop);
+}
+
+function startBulletFire() {
+    if (State.timers.bulletFireTimer) clearInterval(State.timers.bulletFireTimer);
+    State.timers.bulletFireTimer = setInterval(() => {
+        if (State.gameRunning && State.player && !State.isPlayerDead) {
+            fireBullets();
+        }
+    }, State.bulletFireInterval);
+}
+
+function stopBulletFire() {
+    clearInterval(State.timers.bulletFireTimer);
+}
+
+function fireBullets() {
+    const centerX = State.player.x + State.player.width / 2;
+    const startY = State.player.y;
+
+    if (State.weaponType === 'normal') {
+        const spacing = 15;
+        const totalWidth = (State.bulletCount - 1) * spacing;
+        const startX = centerX - totalWidth / 2;
+        for (let i = 0; i < State.bulletCount; i++) {
+            State.bullets.push(new Bullet(startX + i * spacing, startY));
+        }
+    } else if (State.weaponType === 'spread') {
+        const angleSpread = 0.3;
+        const totalAngle = angleSpread * (State.bulletCount - 1);
+        const startAngle = -totalAngle / 2;
+        for (let i = 0; i < State.bulletCount; i++) {
+            const angle = startAngle + i * angleSpread;
+            State.bullets.push(new SpreadBullet(centerX, startY, angle));
+        }
+    } else if (State.weaponType === 'laser') {
+        State.bullets.push(new LaserBullet(centerX, startY, State.bulletCount));
+    }
+}
+
+export function startBossBattleMode() {
+    State.currentGameState = 'boss_battle';
+    startBossBulletFire();
+    document.getElementById('fog-overlay').classList.remove('hidden');
+
+    State.deathTimer = DEATH_TIMER_SECONDS;
+    const timerElem = document.getElementById('boss-timer');
+    timerElem.classList.remove('hidden');
+    timerElem.textContent = `DEATH IN: ${State.deathTimer}`;
+
+    if (State.timers.deathTimerInterval) clearInterval(State.timers.deathTimerInterval);
+    State.timers.deathTimerInterval = setInterval(() => {
+        State.deathTimer--;
+        timerElem.textContent = `DEATH IN: ${State.deathTimer}`;
+        if (State.deathTimer <= 0) {
+            clearInterval(State.timers.deathTimerInterval);
+            handlePlayerDeath();
+        }
+    }, 1000);
+}
+
+function startBossBulletFire() {
+    if (State.timers.bossBulletFireTimer) clearInterval(State.timers.bossBulletFireTimer);
+    State.timers.bossBulletFireTimer = setInterval(() => {
+        if (State.gameRunning && State.boss && State.currentGameState === 'boss_battle') {
+            const centerX = State.boss.x + State.boss.width / 2;
+            const bottomY = State.boss.y + State.boss.height;
+            State.bossBullets.push(new BossBullet(centerX, bottomY, Math.PI / 2));
+            State.bossBullets.push(new BossBullet(centerX, bottomY, Math.PI / 2 - 0.3));
+            State.bossBullets.push(new BossBullet(centerX, bottomY, Math.PI / 2 + 0.3));
+        }
+    }, BOSS_BULLET_FIRE_INTERVAL);
+}
+
+function stopBossBulletFire() {
+    clearInterval(State.timers.bossBulletFireTimer);
+}
+
+function gainExp(amount) {
+    State.playerExp += amount;
+    while (State.playerExp >= State.expToNextLevel) {
+        State.playerExp -= State.expToNextLevel;
+        levelUp();
+    }
+    updateLevelDisplay();
+}
+
+function levelUp() {
+    State.playerLevel++;
+    State.expToNextLevel = Math.floor(50 * Math.pow(1.2, State.playerLevel - 1));
+
+    let message = '';
+    if (State.playerLevel % 5 === 0) {
+        State.bulletCount = Math.min(State.bulletCount + 1, 7);
+        message = `弾数 +1 (${State.bulletCount}発)`;
+    } else if (State.playerLevel % 3 === 0) {
+        State.bulletFireInterval = Math.max(State.bulletFireInterval - 10, 50);
+        message = `連射速度 UP!`;
+    } else if (State.playerLevel === 15) {
+        State.weaponType = 'spread';
+        message = `新武器: スプレッドショット!`;
+    } else if (State.playerLevel === 25) {
+        State.weaponType = 'laser';
+        message = `新武器: レーザー!`;
+    } else {
+        State.playerHP = Math.min(State.playerHP + 1, 10);
+        message = `HP +1`;
+    }
+    updateHUD();
+
+    showLevelUpEffect(message, State.player.x, State.player.y, State.player.width, State.player.height);
+
+    if (State.playerLevel % BOSS_TRIGGER_LEVEL === 0 && !State.boss && State.currentGameState === 'playing_waves') {
+        setTimeout(() => triggerBoss(canvas.width, canvas.height), 2000);
+    }
+    startBulletFire();
+}
+
+function createExplosion(x, y, color) {
+    for (let i = 0; i < 15; i++) {
+        State.particles.push(new Particle(x, y, color));
+    }
+}
+
+function handlePlayerDeath() {
+    if (State.isPlayerDead) return;
+    State.isPlayerDead = true;
+    State.player.visible = false;
+
+    if (State.timers.deathTimerInterval) clearInterval(State.timers.deathTimerInterval);
+    createExplosion(State.player.x + State.player.width / 2, State.player.y + State.player.height / 2, '#00ffff');
+    
+    for (let k = 0; k < 5; k++) {
+        setTimeout(() => {
+            if(State.player) createExplosion(State.player.x + Math.random() * State.player.width, State.player.y + Math.random() * State.player.height, '#ffffff');
+        }, k * 100);
+    }
+
+    setTimeout(gameOver, 2000);
+}
+
+function gameOver() {
+    State.gameRunning = false;
+    State.currentGameState = 'game_over';
+    stopEnemySpawn();
+    stopBulletFire();
+    stopBossBulletFire();
+    if (State.timers.deathTimerInterval) clearInterval(State.timers.deathTimerInterval);
+    
+    showMessage(`GAME OVER - Score: ${State.score}`);
+    toggleUIForGameRun(false);
+    document.getElementById('fog-overlay').classList.add('hidden');
+    document.getElementById('boss-timer').classList.add('hidden');
+    
+    // Background animation preview
+    requestAnimationFrame(previewLoop);
+}
+
+function victoryScreen() {
+    State.gameRunning = false;
+    State.currentGameState = 'victory';
+    stopEnemySpawn();
+    stopBulletFire();
+    stopBossBulletFire();
+    if (State.timers.deathTimerInterval) clearInterval(State.timers.deathTimerInterval);
+    
+    showMessage(`VICTORY! - Score: ${State.score}`);
+    toggleUIForGameRun(false);
+    document.getElementById('fog-overlay').classList.add('hidden');
+    document.getElementById('boss-timer').classList.add('hidden');
+    
+    requestAnimationFrame(previewLoop);
+}
+
+export function previewLoop() {
+    if (State.gameRunning) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (State.stars.length === 0) {
+        for (let i = 0; i < 100; i++) State.stars.push(new Star(canvas.width, canvas.height));
+    }
+    State.stars.forEach(star => {
+        star.update(canvas.width, canvas.height);
+        star.draw(ctx);
+    });
+    requestAnimationFrame(previewLoop);
+}
+
+function gameLoop() {
+    if (!State.gameRunning) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    State.stars.forEach(star => {
+        star.update(canvas.width, canvas.height);
+        star.draw(ctx);
+    });
+
+    State.player.update(keys, State.playerSpeed, canvas.width, canvas.height, State.isPlayerDead);
+    State.player.draw(ctx);
+
+    for (let i = State.particles.length - 1; i >= 0; i--) {
+        const p = State.particles[i];
+        p.update();
+        p.draw(ctx);
+        if (p.life <= 0) State.particles.splice(i, 1);
+    }
+
+    for (let i = State.bullets.length - 1; i >= 0; i--) {
+        const bullet = State.bullets[i];
+        bullet.update();
+        bullet.draw(ctx);
+
+        if (bullet.y + bullet.height < 0 || bullet.y > canvas.height || bullet.x + bullet.width < 0 || bullet.x > canvas.width) {
+            State.bullets.splice(i, 1);
+            continue;
+        }
+
+        if (State.currentGameState === 'playing_waves') {
+            let hit = false;
+            for (let j = State.enemies.length - 1; j >= 0; j--) {
+                const enemy = State.enemies[j];
+                if (checkCollision(bullet, enemy)) {
+                    createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color);
+                    State.bullets.splice(i, 1);
+                    State.enemies.splice(j, 1);
+                    State.score += 10;
+                    gainExp(5);
+                    updateHUD();
+                    hit = true;
+                    break;
+                }
+            }
+            if(hit) continue;
+        }
+
+        for (let j = State.smallEnemies.length - 1; j >= 0; j--) {
+            const smallEnemy = State.smallEnemies[j];
+            if (checkCollision(bullet, smallEnemy)) {
+                State.bullets.splice(i, 1);
+                smallEnemy.health--;
+                createExplosion(bullet.x, bullet.y, '#fff');
+                if (smallEnemy.health <= 0) {
+                    createExplosion(smallEnemy.x + smallEnemy.width / 2, smallEnemy.y + smallEnemy.height / 2, smallEnemy.color);
+                    State.smallEnemies.splice(j, 1);
+                    State.score += 20;
+                    gainExp(10);
+                    updateHUD();
+                }
+                break;
+            }
+        }
+
+        if (State.currentGameState === 'boss_battle' && State.boss) {
+            if (checkCollision(bullet, State.boss)) {
+                State.bullets.splice(i, 1);
+                const damage = bullet.power ? State.bulletDamage * bullet.power : State.bulletDamage;
+                State.boss.hp -= damage;
+                createExplosion(bullet.x, bullet.y, '#fff');
+                updateBossHPBar();
+                if (State.boss.hp <= 0) {
+                    createExplosion(State.boss.x + State.boss.width / 2, State.boss.y + State.boss.height / 2, State.boss.color);
+                    for (let k = 0; k < 5; k++) {
+                        setTimeout(() => createExplosion(State.boss.x + Math.random() * State.boss.width, State.boss.y + Math.random() * State.boss.height, State.boss.color), k * 100);
+                    }
+                    gainExp(100);
+                    State.score += 500;
+                    State.bossesDefeated++;
+                    updateHUD();
+                    stopBossBulletFire();
+                    document.getElementById('fog-overlay').classList.add('hidden');
+                    document.getElementById('boss-timer').classList.add('hidden');
+                    if (State.timers.deathTimerInterval) clearInterval(State.timers.deathTimerInterval);
+                    updateBossHPBar(false); // Hide
+                    
+                    State.boss = null;
+                    State.bossBullets = [];
+                    State.currentGameState = 'playing_waves';
+                    startEnemySpawn(canvas.width);
+                }
+                break;
+            }
+        }
+    }
+
+    if (State.currentGameState === 'playing_waves') {
+        for (let i = State.enemies.length - 1; i >= 0; i--) {
+            const enemy = State.enemies[i];
+            enemy.update(State.player, State.enemyBullets);
+            enemy.draw(ctx);
+            if (!State.isPlayerDead && checkCollision(State.player, enemy)) {
+                createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color);
+                State.enemies.splice(i, 1);
+                continue;
+            }
+            if (enemy.y > canvas.height) State.enemies.splice(i, 1);
+        }
+
+        for (let i = State.smallEnemies.length - 1; i >= 0; i--) {
+            const smallEnemy = State.smallEnemies[i];
+            smallEnemy.update(State.player, State.enemyBullets);
+            smallEnemy.draw(ctx);
+            if (!State.isPlayerDead && checkCollision(State.player, smallEnemy)) {
+                createExplosion(smallEnemy.x + smallEnemy.width / 2, smallEnemy.y + smallEnemy.height / 2, smallEnemy.color);
+                State.smallEnemies.splice(i, 1);
+                continue;
+            }
+            if (smallEnemy.y > canvas.height) State.smallEnemies.splice(i, 1);
+        }
+
+        for (let i = State.enemyBullets.length - 1; i >= 0; i--) {
+            const enemyBullet = State.enemyBullets[i];
+            enemyBullet.update();
+            enemyBullet.draw(ctx);
+            if (!State.isPlayerDead && checkCollision(State.player, enemyBullet)) {
+                createExplosion(enemyBullet.x, enemyBullet.y, enemyBullet.color);
+                State.enemyBullets.splice(i, 1);
+                State.playerHP--;
+                updateHUD();
+                if (State.playerHP <= 0) handlePlayerDeath();
+                continue;
+            }
+            if (enemyBullet.y > canvas.height || enemyBullet.y + enemyBullet.height < 0 || enemyBullet.x > canvas.width || enemyBullet.x + enemyBullet.width < 0) {
+                State.enemyBullets.splice(i, 1);
+            }
+        }
+    } else if (State.currentGameState === 'boss_approaching' || State.currentGameState === 'boss_battle') {
+        if (State.boss) {
+            State.boss.update(canvas.width, State.currentGameState, startBossBattleMode);
+            State.boss.draw(ctx);
+            if (!State.isPlayerDead && checkCollision(State.player, State.boss)) {
+                createExplosion(State.player.x + State.player.width / 2, State.player.y + State.player.height / 2, '#fff');
+            }
+        }
+        for (let i = State.bossBullets.length - 1; i >= 0; i--) {
+            const bossBullet = State.bossBullets[i];
+            bossBullet.update();
+            bossBullet.draw(ctx);
+            if (bossBullet.y > canvas.height) {
+                State.bossBullets.splice(i, 1);
+                continue;
+            }
+            if (!State.isPlayerDead && checkCollision(bossBullet, State.player)) {
+                createExplosion(bossBullet.x, bossBullet.y, bossBullet.color);
+                State.bossBullets.splice(i, 1);
+                State.playerHP--;
+                updateHUD();
+                if (State.playerHP <= 0) handlePlayerDeath();
+            }
+        }
+    }
+
+    requestAnimationFrame(gameLoop);
+}
