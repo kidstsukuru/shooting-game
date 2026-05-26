@@ -53,13 +53,17 @@ function stopBulletFire() {
 function fireBullets() {
     const centerX = State.player.x + State.player.width / 2;
     const startY = State.player.y;
+    // 機体の色を取得するよ！
+    const playerColor = State.player.color;
+    // 機体の種類も取得するよ！
+    const skinId = State.player.skinId;
 
     if (State.weaponType === 'normal') {
         const spacing = 15;
         const totalWidth = (State.bulletCount - 1) * spacing;
         const startX = centerX - totalWidth / 2;
         for (let i = 0; i < State.bulletCount; i++) {
-            State.bullets.push(new Bullet(startX + i * spacing, startY));
+            State.bullets.push(new Bullet(startX + i * spacing, startY, playerColor, skinId));
         }
     } else if (State.weaponType === 'spread') {
         const angleSpread = 0.3;
@@ -67,10 +71,27 @@ function fireBullets() {
         const startAngle = -totalAngle / 2;
         for (let i = 0; i < State.bulletCount; i++) {
             const angle = startAngle + i * angleSpread;
-            State.bullets.push(new SpreadBullet(centerX, startY, angle));
+            State.bullets.push(new SpreadBullet(centerX, startY, angle, playerColor, skinId));
         }
     } else if (State.weaponType === 'laser') {
-        State.bullets.push(new LaserBullet(centerX, startY, State.bulletCount));
+        State.bullets.push(new LaserBullet(centerX, startY, State.bulletCount, playerColor, skinId));
+    }
+
+    if (State.playerLevel >= 10) {
+        const leftX = State.player.x - 20;
+        const rightX = State.player.x + State.player.width + 20;
+        const optionY = State.player.y + 20;
+
+        if (State.weaponType === 'normal') {
+            State.bullets.push(new Bullet(leftX, optionY, playerColor, skinId));
+            State.bullets.push(new Bullet(rightX, optionY, playerColor, skinId));
+        } else if (State.weaponType === 'spread') {
+            State.bullets.push(new SpreadBullet(leftX, optionY, -0.2, playerColor, skinId));
+            State.bullets.push(new SpreadBullet(rightX, optionY, 0.2, playerColor, skinId));
+        } else if (State.weaponType === 'laser') {
+            State.bullets.push(new LaserBullet(leftX, optionY, 1, playerColor, skinId));
+            State.bullets.push(new LaserBullet(rightX, optionY, 1, playerColor, skinId));
+        }
     }
 }
 
@@ -232,7 +253,7 @@ function gameLoop() {
     });
 
     State.player.update(keys, State.playerSpeed, canvas.width, canvas.height, State.isPlayerDead);
-    State.player.draw(ctx);
+    State.player.draw(ctx, State.playerLevel);
 
     for (let i = State.particles.length - 1; i >= 0; i--) {
         const p = State.particles[i];
@@ -387,3 +408,10 @@ function gameLoop() {
 
     requestAnimationFrame(gameLoop);
 }
+
+// Debug: Level Up with L key
+window.addEventListener('keydown', (e) => {
+    if ((e.key === 'l' || e.key === 'L') && State.gameRunning) {
+        levelUp();
+    }
+});

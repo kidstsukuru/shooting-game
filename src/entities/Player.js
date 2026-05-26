@@ -19,9 +19,16 @@ export class Player {
         this.image.onload = () => {
             this.imageLoaded = true;
         };
+
+        this.optionImage = new Image();
+        this.optionImage.src = 'assets/images/option_ship.png';
+        this.optionImageLoaded = false;
+        this.optionImage.onload = () => {
+            this.optionImageLoaded = true;
+        };
     }
 
-    draw(ctx) {
+    draw(ctx, playerLevel = 1) {
         if (!this.visible) return;
         // エンジン噴射エフェクト
         ctx.save();
@@ -57,6 +64,54 @@ export class Player {
             ctx.shadowBlur = 0;
             ctx.restore();
         }
+
+        // Draw option ships if level >= 10
+        if (playerLevel >= 10) {
+            this.drawOptionShip(ctx, this.x - 20, this.y + 20);
+            this.drawOptionShip(ctx, this.x + this.width + 20, this.y + 20);
+        }
+    }
+
+    drawOptionShip(ctx, centerX, centerY) {
+        const width = 20;
+        const height = 20;
+        
+        ctx.save();
+        if (this.optionImageLoaded) {
+            ctx.translate(centerX, centerY);
+            ctx.rotate(Math.PI);
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = this.color;
+            ctx.drawImage(this.optionImage, -width / 2, -height / 2, width, height);
+        } else if (this.imageLoaded) {
+            ctx.translate(centerX, centerY);
+            ctx.rotate(Math.PI);
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = this.color;
+            ctx.drawImage(this.image, -width / 2, -height / 2, width, height);
+        } else {
+            ctx.fillStyle = this.color;
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = this.color;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY - height / 2);
+            ctx.lineTo(centerX - width / 2, centerY + height / 2);
+            ctx.lineTo(centerX + width / 2, centerY + height / 2);
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.restore();
+
+        // Option engine effect
+        ctx.save();
+        ctx.fillStyle = this.engineColor;
+        ctx.globalAlpha = 0.6 + Math.random() * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(centerX - 3, centerY + height / 2);
+        ctx.lineTo(centerX + 3, centerY + height / 2);
+        ctx.lineTo(centerX, centerY + height / 2 + 10 + Math.random() * 5);
+        ctx.fill();
+        ctx.restore();
     }
 
     update(keys, playerSpeed, canvasWidth, canvasHeight, isPlayerDead) {
