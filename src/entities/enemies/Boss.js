@@ -13,6 +13,10 @@ export class Boss {
         this.direction = 1;
         this.targetY = canvasHeight * 0.15; // 少し上に
         this.angle = 0; // 回転演出用
+        
+        this.burnTimer = 0;
+        this.poisonTimer = 0;
+        this.freezeTimer = 0;
 
         this.image = new Image();
         this.image.src = 'assets/images/boss.png';
@@ -31,7 +35,10 @@ export class Boss {
 
             // グロー効果
             ctx.shadowBlur = 20;
-            ctx.shadowColor = '#d53f8c';
+            if (this.freezeTimer > 0) ctx.shadowColor = '#44aaff'; // 氷
+            else if (this.poisonTimer > 0) ctx.shadowColor = '#aaff00'; // 毒
+            else if (this.burnTimer > 0) ctx.shadowColor = '#ff6600'; // 炎
+            else ctx.shadowColor = '#d53f8c';
 
             ctx.drawImage(this.image, -this.width / 2, -this.height / 2, this.width, this.height);
             ctx.restore();
@@ -41,7 +48,10 @@ export class Boss {
 
             // グロー効果
             ctx.shadowBlur = 20;
-            ctx.shadowColor = '#d53f8c';
+            if (this.freezeTimer > 0) ctx.shadowColor = '#44aaff'; // 氷
+            else if (this.poisonTimer > 0) ctx.shadowColor = '#aaff00'; // 毒
+            else if (this.burnTimer > 0) ctx.shadowColor = '#ff6600'; // 炎
+            else ctx.shadowColor = '#d53f8c';
 
             // ボス本体
             ctx.fillStyle = this.color;
@@ -71,6 +81,12 @@ export class Boss {
     }
 
     update(canvasWidth, currentGameState, onStartBossBattleMode) {
+        // 氷づけの時は動かない
+        if (this.freezeTimer > 0) {
+            this.freezeTimer--;
+            return;
+        }
+
         if (this.y < this.targetY) {
             this.y += this.speed * 2;
             if (this.y >= this.targetY) {

@@ -11,6 +11,8 @@ export const State = {
     
     currentGameState: 'start', // 'start', 'playing_waves', 'boss_approaching', 'boss_battle', 'game_over', 'victory'
     isPlayerDead: false,
+    specialSkillUsed: false,
+    skillGauge: 0,
     deathTimer: 0,
 
     playerSpeed: 10,
@@ -48,6 +50,8 @@ export const State = {
         this.bossesDefeated = 0;
         
         this.isPlayerDead = false;
+        this.specialSkillUsed = false;
+        this.skillGauge = 0;
         this.currentGameState = 'playing_waves';
         this.playerSpeed = 10;
         this.bulletFireInterval = 150;

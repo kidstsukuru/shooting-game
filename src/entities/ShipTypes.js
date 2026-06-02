@@ -55,7 +55,8 @@ export const SKINS = {
         id: 'sakura',
         name: 'SAKURA',
         description: '桜色に輝く和風カラー。儚くも美しい花びらの残像を残す。',
-        image: 'assets/images/sakura.png',
+        // サクラの画像を新しいもの（6.png）に変えるよ！
+        image: 'assets/images/6.png',
         color: '#ff77aa',
         glowColor: 'rgba(255, 119, 170, 0.4)',
         engineColor: '#ff99cc',
@@ -64,7 +65,8 @@ export const SKINS = {
         id: 'thunder',
         name: 'THUNDER',
         description: '稲妻を纏う電撃カラー。紫電一閃、瞬く間に敵を貫く。',
-        image: 'assets/images/thunder.png',
+        // サンダーの画像を新しいもの（7.png）に変えるよ！
+        image: 'assets/images/7.png',
         color: '#aa66ff',
         glowColor: 'rgba(170, 102, 255, 0.4)',
         engineColor: '#bb88ff',
@@ -87,6 +89,26 @@ export const SKINS = {
         glowColor: 'rgba(68, 170, 255, 0.4)',
         engineColor: '#66bbff',
     },
+    bronze: {
+        id: 'bronze',
+        name: 'BRONZE',
+        description: '重厚な青銅の輝きを放つ機体。いぶし銀の戦いを見せる。',
+        // ブロンズの画像は仮のものだよ！あとで好きなものに変えよう！
+        image: 'assets/images/player.png',
+        color: '#cd7f32',
+        glowColor: 'rgba(205, 127, 50, 0.4)',
+        engineColor: '#d2691e',
+    },
+    silver: {
+        id: 'silver',
+        name: 'SILVER',
+        description: '白銀の光沢を持つスタイリッシュな機体。鋭い動きで敵を翻弄する。',
+        // シルバーの画像は仮のものだよ！あとで好きなものに変えよう！
+        image: 'assets/images/player.png',
+        color: '#c0c0c0',
+        glowColor: 'rgba(192, 192, 192, 0.4)',
+        engineColor: '#d3d3d3',
+    },
     gold: {
         id: 'gold',
         name: 'GOLD',
@@ -100,8 +122,8 @@ export const SKINS = {
 
 /** スキンIDの配列（順番を保持するため） */
 export const SKIN_ORDER = [
-    'striker', 'phantom', 'inferno', 'nova', 'viper',
-    'sakura', 'thunder', 'crimson', 'glacier', 'gold'
+    'striker', 'phantom', 'inferno', 'viper',
+    'sakura', 'thunder', 'crimson', 'glacier', 'nova', 'bronze', 'silver', 'gold'
 ];
 
 /** デフォルトのスキン */

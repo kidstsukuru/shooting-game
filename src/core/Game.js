@@ -1,6 +1,6 @@
 import { State } from './State.js';
 import { checkCollision } from '../systems/Collision.js';
-import { updateHUD, updateLevelDisplay, showLevelUpEffect, toggleUIForGameRun, updateBossHPBar, showMessage } from '../ui/HUD.js';
+import { updateHUD, updateLevelDisplay, showLevelUpEffect, toggleUIForGameRun, updateBossHPBar, showMessage, updateSkillGauge } from '../ui/HUD.js';
 import { startEnemySpawn, stopEnemySpawn, triggerBoss } from '../systems/Spawner.js';
 import { Bullet, SpreadBullet, LaserBullet, BossBullet } from '../entities/Bullet.js';
 import { Player } from '../entities/Player.js';
@@ -120,6 +120,7 @@ function startBossBulletFire() {
     if (State.timers.bossBulletFireTimer) clearInterval(State.timers.bossBulletFireTimer);
     State.timers.bossBulletFireTimer = setInterval(() => {
         if (State.gameRunning && State.boss && State.currentGameState === 'boss_battle') {
+            if (State.boss.freezeTimer > 0) return; // 氷づけ中は撃たない
             const centerX = State.boss.x + State.boss.width / 2;
             const bottomY = State.boss.y + State.boss.height;
             State.bossBullets.push(new BossBullet(centerX, bottomY, Math.PI / 2));
@@ -140,6 +141,14 @@ function gainExp(amount) {
         levelUp();
     }
     updateLevelDisplay();
+}
+
+function gainSkillGauge(amount) {
+    if (State.skillGauge < 100) {
+        State.skillGauge += amount;
+        if (State.skillGauge > 100) State.skillGauge = 100;
+        updateSkillGauge();
+    }
 }
 
 function levelUp() {
@@ -282,6 +291,7 @@ function gameLoop() {
                     State.enemies.splice(j, 1);
                     State.score += 10;
                     gainExp(5);
+                    gainSkillGauge(10);
                     updateHUD();
                     hit = true;
                     break;
@@ -301,7 +311,10 @@ function gameLoop() {
                     State.smallEnemies.splice(j, 1);
                     State.score += 20;
                     gainExp(10);
+                    gainSkillGauge(15);
                     updateHUD();
+                } else {
+                    gainSkillGauge(5);
                 }
                 break;
             }
@@ -314,25 +327,9 @@ function gameLoop() {
                 State.boss.hp -= damage;
                 createExplosion(bullet.x, bullet.y, '#fff');
                 updateBossHPBar();
+                gainSkillGauge(2);
                 if (State.boss.hp <= 0) {
-                    createExplosion(State.boss.x + State.boss.width / 2, State.boss.y + State.boss.height / 2, State.boss.color);
-                    for (let k = 0; k < 5; k++) {
-                        setTimeout(() => createExplosion(State.boss.x + Math.random() * State.boss.width, State.boss.y + Math.random() * State.boss.height, State.boss.color), k * 100);
-                    }
-                    gainExp(100);
-                    State.score += 500;
-                    State.bossesDefeated++;
-                    updateHUD();
-                    stopBossBulletFire();
-                    document.getElementById('fog-overlay').classList.add('hidden');
-                    document.getElementById('boss-timer').classList.add('hidden');
-                    if (State.timers.deathTimerInterval) clearInterval(State.timers.deathTimerInterval);
-                    updateBossHPBar(false); // Hide
-                    
-                    State.boss = null;
-                    State.bossBullets = [];
-                    State.currentGameState = 'playing_waves';
-                    startEnemySpawn(canvas.width);
+                    handleBossDeath();
                 }
                 break;
             }
@@ -344,7 +341,7 @@ function gameLoop() {
             const enemy = State.enemies[i];
             enemy.update(State.player, State.enemyBullets);
             enemy.draw(ctx);
-            if (!State.isPlayerDead && checkCollision(State.player, enemy)) {
+            if (!State.isPlayerDead && State.player.invincibleTimer <= 0 && checkCollision(State.player, enemy)) {
                 createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color);
                 State.enemies.splice(i, 1);
                 continue;
@@ -356,7 +353,7 @@ function gameLoop() {
             const smallEnemy = State.smallEnemies[i];
             smallEnemy.update(State.player, State.enemyBullets);
             smallEnemy.draw(ctx);
-            if (!State.isPlayerDead && checkCollision(State.player, smallEnemy)) {
+            if (!State.isPlayerDead && State.player.invincibleTimer <= 0 && checkCollision(State.player, smallEnemy)) {
                 createExplosion(smallEnemy.x + smallEnemy.width / 2, smallEnemy.y + smallEnemy.height / 2, smallEnemy.color);
                 State.smallEnemies.splice(i, 1);
                 continue;
@@ -368,7 +365,7 @@ function gameLoop() {
             const enemyBullet = State.enemyBullets[i];
             enemyBullet.update();
             enemyBullet.draw(ctx);
-            if (!State.isPlayerDead && checkCollision(State.player, enemyBullet)) {
+            if (!State.isPlayerDead && State.player.invincibleTimer <= 0 && checkCollision(State.player, enemyBullet)) {
                 createExplosion(enemyBullet.x, enemyBullet.y, enemyBullet.color);
                 State.enemyBullets.splice(i, 1);
                 State.playerHP--;
@@ -382,9 +379,32 @@ function gameLoop() {
         }
     } else if (State.currentGameState === 'boss_approaching' || State.currentGameState === 'boss_battle') {
         if (State.boss) {
+            // やけどのじわじわダメージ
+            if (State.boss.burnTimer > 0) {
+                State.boss.burnTimer--;
+                if (State.boss.burnTimer % 30 === 0) {
+                    State.boss.hp -= 30; // 0.5秒ごとに30ダメージ
+                    createExplosion(State.boss.x + Math.random() * State.boss.width, State.boss.y + Math.random() * State.boss.height, '#ff6600');
+                    updateBossHPBar();
+                    if (State.boss.hp <= 0) handleBossDeath();
+                }
+            }
+            // 毒のじわじわダメージ
+            if (State.boss && State.boss.poisonTimer > 0) {
+                State.boss.poisonTimer--;
+                if (State.boss.poisonTimer % 30 === 0) {
+                    State.boss.hp -= 30;
+                    createExplosion(State.boss.x + Math.random() * State.boss.width, State.boss.y + Math.random() * State.boss.height, '#aaff00');
+                    updateBossHPBar();
+                    if (State.boss.hp <= 0) handleBossDeath();
+                }
+            }
+        }
+        
+        if (State.boss) {
             State.boss.update(canvas.width, State.currentGameState, startBossBattleMode);
             State.boss.draw(ctx);
-            if (!State.isPlayerDead && checkCollision(State.player, State.boss)) {
+            if (!State.isPlayerDead && State.player.invincibleTimer <= 0 && checkCollision(State.player, State.boss)) {
                 createExplosion(State.player.x + State.player.width / 2, State.player.y + State.player.height / 2, '#fff');
             }
         }
@@ -396,7 +416,7 @@ function gameLoop() {
                 State.bossBullets.splice(i, 1);
                 continue;
             }
-            if (!State.isPlayerDead && checkCollision(bossBullet, State.player)) {
+            if (!State.isPlayerDead && State.player.invincibleTimer <= 0 && checkCollision(bossBullet, State.player)) {
                 createExplosion(bossBullet.x, bossBullet.y, bossBullet.color);
                 State.bossBullets.splice(i, 1);
                 State.playerHP--;
@@ -415,3 +435,122 @@ window.addEventListener('keydown', (e) => {
         levelUp();
     }
 });
+
+// ボスの撃破処理
+function handleBossDeath() {
+    createExplosion(State.boss.x + State.boss.width / 2, State.boss.y + State.boss.height / 2, State.boss.color);
+    for (let k = 0; k < 5; k++) {
+        setTimeout(() => {
+            if(State.boss) createExplosion(State.boss.x + Math.random() * State.boss.width, State.boss.y + Math.random() * State.boss.height, State.boss.color);
+        }, k * 100);
+    }
+    gainExp(100);
+    State.score += 500;
+    State.bossesDefeated++;
+    updateHUD();
+    stopBossBulletFire();
+    document.getElementById('fog-overlay').classList.add('hidden');
+    document.getElementById('boss-timer').classList.add('hidden');
+    if (State.timers.deathTimerInterval) clearInterval(State.timers.deathTimerInterval);
+    updateBossHPBar(false); // Hide
+    
+    State.boss = null;
+    State.bossBullets = [];
+    State.currentGameState = 'playing_waves';
+    startEnemySpawn(canvas.width);
+}
+
+// 画面内の敵を一掃する処理（道中の必殺技用）
+function wipeScreenEnemies() {
+    for (let i = State.enemies.length - 1; i >= 0; i--) {
+        const enemy = State.enemies[i];
+        createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color);
+    }
+    State.enemies = [];
+    for (let i = State.smallEnemies.length - 1; i >= 0; i--) {
+        const smallEnemy = State.smallEnemies[i];
+        createExplosion(smallEnemy.x + smallEnemy.width / 2, smallEnemy.y + smallEnemy.height / 2, smallEnemy.color);
+    }
+    State.smallEnemies = [];
+    for (let i = State.enemyBullets.length - 1; i >= 0; i--) {
+        const enemyBullet = State.enemyBullets[i];
+        createExplosion(enemyBullet.x, enemyBullet.y, enemyBullet.color);
+    }
+    State.enemyBullets = [];
+}
+
+// 必殺技の発動
+export function useSpecialSkill() {
+    if (State.skillGauge < 100) return false; // ゲージが100%じゃないと使えない
+    if (State.isPlayerDead) return false;
+
+    State.skillGauge = 0;
+    updateSkillGauge();
+    
+    // 発動メッセージ
+    showMessage("必殺技発動！");
+
+    const skinId = State.selectedShipId;
+    
+    if (skinId === 'phantom') {
+        State.player.invincibleTimer = 300; 
+    } else if (skinId === 'crimson') {
+        if (State.boss) {
+            State.boss.hp = Math.floor(State.boss.hp / 2);
+            createExplosion(State.boss.x + State.boss.width / 2, State.boss.y + State.boss.height / 2, '#ff2244');
+            updateBossHPBar();
+        } else {
+            wipeScreenEnemies();
+        }
+    } else if (skinId === 'nova') {
+        const targetX = State.boss ? State.boss.x + State.boss.width/2 : canvas.width/2;
+        const targetY = State.boss ? State.boss.y + State.boss.height/2 : canvas.height/2;
+        for (let k = 0; k < 15; k++) {
+            setTimeout(() => createExplosion(targetX - 100 + Math.random() * 200, targetY - 100 + Math.random() * 200, '#ffffff'), k * 50);
+        }
+        if (State.boss) {
+            State.boss.hp -= 500;
+            updateBossHPBar();
+            if (State.boss.hp <= 0) handleBossDeath();
+        } else {
+            wipeScreenEnemies();
+        }
+    } else if (skinId === 'sakura') {
+        const targetX = State.boss ? State.boss.x + State.boss.width/2 : canvas.width/2;
+        const targetY = State.boss ? State.boss.y + State.boss.height/2 : canvas.height/2;
+        for (let k = 0; k < 15; k++) {
+            setTimeout(() => createExplosion(targetX - 100 + Math.random() * 200, targetY - 100 + Math.random() * 200, '#ff77aa'), k * 50);
+        }
+        if (State.boss) {
+            State.boss.hp -= 500;
+            updateBossHPBar();
+            if (State.boss.hp <= 0) handleBossDeath();
+        } else {
+            wipeScreenEnemies();
+        }
+    } else if (skinId === 'thunder') {
+        const targetX = State.boss ? State.boss.x + State.boss.width/2 : canvas.width/2;
+        const targetY = State.boss ? State.boss.y + State.boss.height/2 : canvas.height/2;
+        for (let k = 0; k < 15; k++) {
+            setTimeout(() => createExplosion(targetX - 100 + Math.random() * 200, targetY - 100 + Math.random() * 200, '#aa66ff'), k * 50);
+        }
+        if (State.boss) {
+            State.boss.hp -= 500;
+            updateBossHPBar();
+            if (State.boss.hp <= 0) handleBossDeath();
+        } else {
+            wipeScreenEnemies();
+        }
+    } else if (skinId === 'inferno') {
+        if (State.boss) State.boss.burnTimer = 600;
+        else wipeScreenEnemies();
+    } else if (skinId === 'viper') {
+        if (State.boss) State.boss.poisonTimer = 600;
+        else wipeScreenEnemies();
+    } else if (skinId === 'glacier') {
+        if (State.boss) State.boss.freezeTimer = 300;
+        else wipeScreenEnemies();
+    }
+
+    return true; 
+}

@@ -13,6 +13,7 @@ export function initHUD() {
         levelUpReward: document.getElementById('levelUpReward'),
         bossHpDisplay: document.getElementById('bossHpDisplay'),
         bossHpBar: document.getElementById('bossHpBar'),
+        skillBar: document.getElementById('skillBar'),
         gameUI: document.getElementById('game-ui'),
         gameMessage: document.getElementById('game-message'),
         startButton: document.getElementById('startButton'),
@@ -40,6 +41,17 @@ export function initHUD() {
 export function updateHUD() {
     if(uiElements.scoreDisplay) uiElements.scoreDisplay.textContent = `スコア: ${State.score}`;
     if(uiElements.hpDisplay) uiElements.hpDisplay.textContent = `HP: ${State.playerHP}`;
+}
+
+export function updateSkillGauge() {
+    if (uiElements.skillBar) {
+        uiElements.skillBar.style.width = `${State.skillGauge}%`;
+        if (State.skillGauge >= 100) {
+            uiElements.skillBar.classList.add('ready');
+        } else {
+            uiElements.skillBar.classList.remove('ready');
+        }
+    }
 }
 
 export function updateLevelDisplay() {

@@ -10,6 +10,7 @@ export class Player {
         this.x = canvasWidth / 2 - this.width / 2;
         this.y = canvasHeight - 60;
         this.visible = true;
+        this.invincibleTimer = 0;
         this.color = skin.color;
         this.engineColor = skin.engineColor;
 
@@ -30,6 +31,10 @@ export class Player {
 
     draw(ctx, playerLevel = 1) {
         if (!this.visible) return;
+        ctx.save();
+        if (this.invincibleTimer > 0) {
+            ctx.globalAlpha = 0.4; // ファントムの必殺技中は半透明！
+        }
         // エンジン噴射エフェクト
         ctx.save();
         ctx.fillStyle = this.engineColor;
@@ -70,6 +75,7 @@ export class Player {
             this.drawOptionShip(ctx, this.x - 20, this.y + 20);
             this.drawOptionShip(ctx, this.x + this.width + 20, this.y + 20);
         }
+        ctx.restore();
     }
 
     drawOptionShip(ctx, centerX, centerY) {
@@ -116,6 +122,8 @@ export class Player {
 
     update(keys, playerSpeed, canvasWidth, canvasHeight, isPlayerDead) {
         if (isPlayerDead) return;
+        if (this.invincibleTimer > 0) this.invincibleTimer--;
+        
         if (keys['ArrowLeft'] || keys['a']) this.x -= playerSpeed;
         if (keys['ArrowRight'] || keys['d']) this.x += playerSpeed;
         if (keys['ArrowUp'] || keys['w']) this.y -= playerSpeed;

@@ -1,6 +1,6 @@
 import { initHUD } from './ui/HUD.js';
 import { initInputListeners } from './core/Input.js';
-import { initGameLoop, startGame, previewLoop } from './core/Game.js';
+import { initGameLoop, startGame, previewLoop, useSpecialSkill } from './core/Game.js';
 import { State } from './core/State.js';
 import { showHomeScreen } from './ui/HomeScreen.js';
 
@@ -74,6 +74,10 @@ function init() {
             if (!State.gameRunning && State.currentGameState !== 'start') {
                 showHome();
             }
+        },
+        () => {
+            // 必殺技を発動する（Game.jsの関数を呼ぶ）
+            return useSpecialSkill();
         }
     );
 
