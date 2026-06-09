@@ -8,7 +8,7 @@ export class Enemy {
         this.x = Math.random() * (canvasWidth - this.width);
         this.y = -this.height;
         this.color = '#ff4444';
-        this.health = 1;
+        this.health = 400;
 
         this.image = new Image();
         this.image.src = 'assets/images/enemy.png';

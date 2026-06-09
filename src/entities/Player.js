@@ -49,7 +49,12 @@ export class Player {
         if (this.imageLoaded) {
             ctx.save();
             ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
-            ctx.rotate(Math.PI);
+            // ゴールドの時だけ画像を回転させないよ！（12.pngの向きを正しくするため）
+            if (this.skinId === 'gold') {
+                ctx.rotate(0);
+            } else {
+                ctx.rotate(Math.PI);
+            }
             ctx.shadowBlur = 15;
             ctx.shadowColor = this.color;
             ctx.drawImage(this.image, -this.width / 2, -this.height / 2, this.width, this.height);

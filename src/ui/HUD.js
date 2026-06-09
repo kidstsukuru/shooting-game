@@ -1,12 +1,13 @@
 import { State } from '../core/State.js';
 import { Particle } from '../entities/Effects.js';
+import { INITIAL_PLAYER_HP } from '../utils/constants.js';
 
 let uiElements = {};
 
 export function initHUD() {
     uiElements = {
         scoreDisplay: document.getElementById('scoreDisplay'),
-        hpDisplay: document.getElementById('hpDisplay'),
+        playerHpBar: document.getElementById('playerHpBar'),
         levelDisplay: document.getElementById('levelDisplay'),
         expBar: document.getElementById('expBar'),
         levelUpDisplay: document.getElementById('levelUpDisplay'),
@@ -40,7 +41,10 @@ export function initHUD() {
 
 export function updateHUD() {
     if(uiElements.scoreDisplay) uiElements.scoreDisplay.textContent = `スコア: ${State.score}`;
-    if(uiElements.hpDisplay) uiElements.hpDisplay.textContent = `HP: ${State.playerHP}`;
+    if(uiElements.playerHpBar) {
+        const hpPercent = Math.max(0, (State.playerHP / INITIAL_PLAYER_HP) * 100);
+        uiElements.playerHpBar.style.width = `${hpPercent}%`;
+    }
 }
 
 export function updateSkillGauge() {

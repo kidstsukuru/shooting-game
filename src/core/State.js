@@ -1,7 +1,7 @@
 export const State = {
     gameRunning: false,
     score: 0,
-    playerHP: 3,
+    playerHP: 500,
     playerLevel: 1,
     playerExp: 0,
     expToNextLevel: 50,
@@ -17,7 +17,7 @@ export const State = {
 
     playerSpeed: 10,
     bulletFireInterval: 150,
-    bulletDamage: 10,
+    bulletDamage: 100,
     selectedShipId: 'striker',
 
     player: null,
@@ -41,7 +41,7 @@ export const State = {
 
     reset() {
         this.score = 0;
-        this.playerHP = 3;
+        this.playerHP = 500;
         this.playerLevel = 1;
         this.playerExp = 0;
         this.expToNextLevel = 50;
@@ -55,7 +55,7 @@ export const State = {
         this.currentGameState = 'playing_waves';
         this.playerSpeed = 10;
         this.bulletFireInterval = 150;
-        this.bulletDamage = 10;
+        this.bulletDamage = 100;
         this.selectedShipId = 'striker';
 
         this.player = null;

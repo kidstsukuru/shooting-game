@@ -8,7 +8,7 @@
     <!-- Tailwind CSSをCDNで読み込み -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 外部CSSファイルを読み込み -->
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=5">
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="assets/images/icon-512.png">
@@ -25,7 +25,9 @@
             <button id="restartButton" class="game-button hidden">再挑戦</button>
         </div>
         <div id="scoreDisplay" class="game-score">スコア: 0</div>
-        <div id="hpDisplay" class="game-hp">HP: 3</div>
+        <div id="playerHpDisplay">
+            <div id="playerHpBar"></div>
+        </div>
         <div id="levelDisplay" class="game-level">Lv.1</div>
         <div id="expBarContainer">
             <div id="expBar"></div>

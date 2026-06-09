@@ -224,7 +224,12 @@ function drawAllPreviews() {
         img.onload = () => {
             ctx.save();
             ctx.translate(cx, cy);
-            ctx.rotate(Math.PI);
+            // ゴールドの時だけ画像を回転させないよ！
+            if (id === 'gold') {
+                ctx.rotate(0);
+            } else {
+                ctx.rotate(Math.PI);
+            }
             ctx.shadowBlur = 30;
             ctx.shadowColor = skin.color;
             ctx.drawImage(img, -70, -70, 140, 140);

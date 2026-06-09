@@ -5,7 +5,7 @@ import { startEnemySpawn, stopEnemySpawn, triggerBoss } from '../systems/Spawner
 import { Bullet, SpreadBullet, LaserBullet, BossBullet } from '../entities/Bullet.js';
 import { Player } from '../entities/Player.js';
 import { Star, Particle } from '../entities/Effects.js';
-import { BOSS_BULLET_FIRE_INTERVAL, DEATH_TIMER_SECONDS, BOSS_TRIGGER_LEVEL } from '../utils/constants.js';
+import { BOSS_BULLET_FIRE_INTERVAL, DEATH_TIMER_SECONDS, BOSS_TRIGGER_LEVEL, INITIAL_PLAYER_HP } from '../utils/constants.js';
 import { keys } from './Input.js';
 
 let canvas;
@@ -17,6 +17,7 @@ export function initGameLoop(gameCanvas, gameCtx) {
 }
 
 export function startGame(skinId = 'striker') {
+    if (State.gameRunning) return;
     State.reset();
     State.selectedShipId = skinId;
     
@@ -155,13 +156,16 @@ function levelUp() {
     State.playerLevel++;
     State.expToNextLevel = Math.floor(50 * Math.pow(1.2, State.playerLevel - 1));
 
+    // 毎回レベルアップ時に体力を100回復（最大値を超えないように）
+    State.playerHP = Math.min(State.playerHP + 100, INITIAL_PLAYER_HP);
+
     let message = '';
     if (State.playerLevel % 5 === 0) {
         State.bulletCount = Math.min(State.bulletCount + 1, 7);
-        message = `弾数 +1 (${State.bulletCount}発)`;
+        message = `弾数 +1 (${State.bulletCount}発) & HP回復!`;
     } else if (State.playerLevel % 3 === 0) {
         State.bulletFireInterval = Math.max(State.bulletFireInterval - 10, 50);
-        message = `連射速度 UP!`;
+        message = `連射速度 UP! & HP回復!`;
     } else if (State.playerLevel === 15) {
         State.weaponType = 'spread';
         message = `新武器: スプレッドショット!`;
@@ -169,8 +173,7 @@ function levelUp() {
         State.weaponType = 'laser';
         message = `新武器: レーザー!`;
     } else {
-        State.playerHP = Math.min(State.playerHP + 1, 10);
-        message = `HP +1`;
+        message = `レベルアップ！ (HP 100回復)`;
     }
     updateHUD();
 
@@ -286,13 +289,20 @@ function gameLoop() {
             for (let j = State.enemies.length - 1; j >= 0; j--) {
                 const enemy = State.enemies[j];
                 if (checkCollision(bullet, enemy)) {
-                    createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color);
                     State.bullets.splice(i, 1);
-                    State.enemies.splice(j, 1);
-                    State.score += 10;
-                    gainExp(5);
-                    gainSkillGauge(10);
-                    updateHUD();
+                    const damage = bullet.power ? State.bulletDamage * bullet.power : State.bulletDamage;
+                    enemy.health -= damage;
+                    createExplosion(bullet.x, bullet.y, '#fff');
+                    if (enemy.health <= 0) {
+                        createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color);
+                        State.enemies.splice(j, 1);
+                        State.score += 10;
+                        gainExp(5);
+                        gainSkillGauge(10);
+                        updateHUD();
+                    } else {
+                        gainSkillGauge(2);
+                    }
                     hit = true;
                     break;
                 }
@@ -304,7 +314,8 @@ function gameLoop() {
             const smallEnemy = State.smallEnemies[j];
             if (checkCollision(bullet, smallEnemy)) {
                 State.bullets.splice(i, 1);
-                smallEnemy.health--;
+                const damage = bullet.power ? State.bulletDamage * bullet.power : State.bulletDamage;
+                smallEnemy.health -= damage;
                 createExplosion(bullet.x, bullet.y, '#fff');
                 if (smallEnemy.health <= 0) {
                     createExplosion(smallEnemy.x + smallEnemy.width / 2, smallEnemy.y + smallEnemy.height / 2, smallEnemy.color);
@@ -344,6 +355,9 @@ function gameLoop() {
             if (!State.isPlayerDead && State.player.invincibleTimer <= 0 && checkCollision(State.player, enemy)) {
                 createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.color);
                 State.enemies.splice(i, 1);
+                State.playerHP -= 100;
+                updateHUD();
+                if (State.playerHP <= 0) handlePlayerDeath();
                 continue;
             }
             if (enemy.y > canvas.height) State.enemies.splice(i, 1);
@@ -356,6 +370,9 @@ function gameLoop() {
             if (!State.isPlayerDead && State.player.invincibleTimer <= 0 && checkCollision(State.player, smallEnemy)) {
                 createExplosion(smallEnemy.x + smallEnemy.width / 2, smallEnemy.y + smallEnemy.height / 2, smallEnemy.color);
                 State.smallEnemies.splice(i, 1);
+                State.playerHP -= 100;
+                updateHUD();
+                if (State.playerHP <= 0) handlePlayerDeath();
                 continue;
             }
             if (smallEnemy.y > canvas.height) State.smallEnemies.splice(i, 1);
@@ -368,7 +385,7 @@ function gameLoop() {
             if (!State.isPlayerDead && State.player.invincibleTimer <= 0 && checkCollision(State.player, enemyBullet)) {
                 createExplosion(enemyBullet.x, enemyBullet.y, enemyBullet.color);
                 State.enemyBullets.splice(i, 1);
-                State.playerHP--;
+                State.playerHP -= 100;
                 updateHUD();
                 if (State.playerHP <= 0) handlePlayerDeath();
                 continue;
@@ -419,7 +436,7 @@ function gameLoop() {
             if (!State.isPlayerDead && State.player.invincibleTimer <= 0 && checkCollision(bossBullet, State.player)) {
                 createExplosion(bossBullet.x, bossBullet.y, bossBullet.color);
                 State.bossBullets.splice(i, 1);
-                State.playerHP--;
+                State.playerHP -= 100;
                 updateHUD();
                 if (State.playerHP <= 0) handlePlayerDeath();
             }

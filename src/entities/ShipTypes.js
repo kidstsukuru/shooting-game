@@ -75,7 +75,8 @@ export const SKINS = {
         id: 'crimson',
         name: 'CRIMSON',
         description: '深紅に燃える戦闘機。血のように赤い軌跡が闘志を示す。',
-        image: 'assets/images/crimson.png',
+        // クリムゾンの画像を新しいもの（8.png）に変えるよ！
+        image: 'assets/images/8.png',
         color: '#ff2244',
         glowColor: 'rgba(255, 34, 68, 0.4)',
         engineColor: '#ff4466',
@@ -84,7 +85,8 @@ export const SKINS = {
         id: 'glacier',
         name: 'GLACIER',
         description: '氷河のような冷たい青白さ。凍てつく冷気が周囲を包む。',
-        image: 'assets/images/glacier.png',
+        // グレシアの画像を新しいもの（9.png）に変えるよ！
+        image: 'assets/images/9.png',
         color: '#44aaff',
         glowColor: 'rgba(68, 170, 255, 0.4)',
         engineColor: '#66bbff',
@@ -113,7 +115,8 @@ export const SKINS = {
         id: 'gold',
         name: 'GOLD',
         description: '黄金に輝く伝説の塗装。歴戦のエースだけが許される至高の証。',
-        image: 'assets/images/gold.png',
+        // ゴールドの画像を新しいもの（12.png）に変えるよ！
+        image: 'assets/images/12.png',
         color: '#ffd700',
         glowColor: 'rgba(255, 215, 0, 0.4)',
         engineColor: '#ffcc00',

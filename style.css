@@ -64,7 +64,7 @@ canvas {
 
 .game-score {
     position: absolute;
-    top: 20px;
+    top: 30px;
     left: 20px;
     font-size: 1.5rem;
     color: #fff;
@@ -72,20 +72,26 @@ canvas {
     text-shadow: 0 0 5px #00ffff;
 }
 
-.game-hp {
+#playerHpDisplay {
     position: absolute;
-    top: 20px;
-    right: 20px;
-    font-size: 2rem;
-    font-weight: bold;
-    color: #fff;
+    top: 5px;
+    left: 5px;
+    width: calc(100% - 10px);
+    height: 12px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border: 2px solid #00ffff;
+    border-radius: 8px;
+    overflow: hidden;
     z-index: 5;
-    background: linear-gradient(135deg, rgba(255, 0, 85, 0.8), rgba(200, 0, 60, 0.9));
-    padding: 10px 20px;
-    border-radius: 10px;
-    border: 2px solid #ff0055;
-    box-shadow: 0 0 15px rgba(255, 0, 85, 0.6), inset 0 0 10px rgba(255, 255, 255, 0.1);
-    text-shadow: 0 0 10px #ff0055, 2px 2px 4px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+#playerHpBar {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #00ffff, #0088ff);
+    transition: width 0.1s linear;
+    box-shadow: 0 0 10px rgba(0, 136, 255, 0.8);
 }
 
 #bossHpDisplay {
@@ -149,10 +155,9 @@ canvas {
         padding: 0 20px;
     }
 
-    .game-score,
-    .game-hp {
+    .game-score {
         font-size: 1.2rem;
-        top: 10px;
+        top: 25px;
     }
 
     #bossHpDisplay {

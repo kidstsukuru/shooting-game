@@ -9,7 +9,7 @@ export class SmallEnemy {
         this.y = -this.height;
         this.color = '#00ff00';
         this.speed = ENEMY_SPEED * 1.5;
-        this.health = 1;
+        this.health = 200;
         this.fireCooldown = 0;
 
         this.image = new Image();
